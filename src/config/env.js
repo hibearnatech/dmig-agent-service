@@ -1,11 +1,11 @@
 // Environment variables for Instagram integration
 
-const VERIFY_TOKEN = "hibearna_verify_token_2026";
-const INSTAGRAM_APP_ID = "1318648676264792";
-const INSTAGRAM_APP_SECRET = process.env.INSTAGRAM_APP_SECRET;
+require("dotenv").config();
 
-const REDIRECT_URI =
-  "https://api-hhgsmctgnq-uc.a.run.app/instagram/callback";
+const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
+const INSTAGRAM_APP_ID = process.env.INSTAGRAM_APP_ID;
+const INSTAGRAM_APP_SECRET = process.env.INSTAGRAM_APP_SECRET;
+const REDIRECT_URI = process.env.REDIRECT_URI;
 
 const APP_NAME = "Hibearna Tech Instagram Agent";
 

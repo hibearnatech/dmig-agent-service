@@ -16,30 +16,47 @@ function buildTenantResult(doc) {
 }
 
 /**
- * Finds the connected tenant by Instagram Business ID.
- * It checks both OAuth ID and Webhook Business ID.
- * @param {string} instagramBusinessId Instagram Business ID.
+ * Finds one connected account by field and value.
+ * @param {string} field Firestore field name.
+ * @param {string} value Firestore field value.
+ * @return {Promise<object|null>} Firestore document snapshot or null.
+ */
+async function findConnectedAccountByField(field, value) {
+  const snapshot = await db
+      .collection("connected_accounts")
+      .where(field, "==", value)
+      .limit(1)
+      .get();
+
+  if (snapshot.empty) {
+    return null;
+  }
+
+  return snapshot.docs[0];
+}
+
+/**
+ * Finds the connected tenant by Instagram webhook or OAuth IDs.
+ * @param {string} instagramBusinessId Instagram webhook/account ID.
  * @return {Promise<object>} Tenant lookup result.
  */
 async function findTenantByInstagramBusinessId(instagramBusinessId) {
-  let snapshot = await db
-      .collection("connected_accounts")
-      .where("instagramUserId", "==", instagramBusinessId)
-      .limit(1)
-      .get();
+  const lookupFields = [
+    "webhookInstagramBusinessId",
+    "instagramBusinessId",
+    "instagramAccountId",
+    "instagramUserId",
+  ];
 
-  if (!snapshot.empty) {
-    return buildTenantResult(snapshot.docs[0]);
-  }
+  for (const field of lookupFields) {
+    const doc = await findConnectedAccountByField(
+        field,
+        instagramBusinessId,
+    );
 
-  snapshot = await db
-      .collection("connected_accounts")
-      .where("webhookInstagramBusinessId", "==", instagramBusinessId)
-      .limit(1)
-      .get();
-
-  if (!snapshot.empty) {
-    return buildTenantResult(snapshot.docs[0]);
+    if (doc) {
+      return buildTenantResult(doc);
+    }
   }
 
   return {

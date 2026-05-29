@@ -1,3 +1,5 @@
+// functions/src/routes/metaWebhook.routes.js
+
 const express = require("express");
 const {VERIFY_TOKEN} = require("../config/env");
 const {
@@ -86,7 +88,7 @@ router.post("/meta/webhook", async (req, res) => {
       }
 
       if (event.message_edit) {
-        console.log("Instagram message edit event:", {
+        console.log("Instagram message edit event ignored:", {
           instagramBusinessId,
           timestamp: event.timestamp,
           messageEdit: event.message_edit,
@@ -138,6 +140,41 @@ router.post("/meta/webhook", async (req, res) => {
         field: change.field,
         value: change.value,
       });
+
+      if (
+        change.field === "messages" &&
+        change.value &&
+        change.value.message &&
+        change.value.message.text
+      ) {
+        const normalizedEvent = {
+          sender: change.value.sender,
+          recipient: change.value.recipient,
+          timestamp: change.value.timestamp,
+          message: change.value.message,
+        };
+
+        const normalizedSenderId =
+          normalizedEvent.sender && normalizedEvent.sender.id;
+
+        const normalizedRecipientId =
+          normalizedEvent.recipient && normalizedEvent.recipient.id;
+
+        console.log("Instagram TEXT message received from changes:", {
+          instagramBusinessId,
+          senderId: normalizedSenderId,
+          recipientId: normalizedRecipientId,
+          timestamp: normalizedEvent.timestamp,
+          messageId: normalizedEvent.message.mid || null,
+          messageText: normalizedEvent.message.text,
+        });
+
+        await handleIncomingInstagramTextMessage({
+          instagramBusinessId,
+          entryTime,
+          event: normalizedEvent,
+        });
+      }
     }
   }
 

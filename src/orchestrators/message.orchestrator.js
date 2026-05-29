@@ -1,3 +1,5 @@
+// Orchestrator for incoming Instagram messages.
+
 const {db, admin} = require("../config/firebase");
 const {
   saveIncomingTextMessage,
@@ -5,6 +7,9 @@ const {
 const {
   sendManualInstagramMessage,
 } = require("../services/sendMessage.service");
+const {
+  findTenantByInstagramBusinessId,
+} = require("../services/tenant.service");
 
 /**
  * Handles an incoming Instagram text event.
@@ -34,13 +39,11 @@ async function handleIncomingInstagramTextMessage({
     return;
   }
 
-  const tenantSnapshot = await db
-      .collection("connected_accounts")
-      .where("instagramUserId", "==", instagramBusinessId)
-      .limit(1)
-      .get();
+  const tenantResult = await findTenantByInstagramBusinessId(
+      instagramBusinessId,
+  );
 
-  if (tenantSnapshot.empty) {
+  if (!tenantResult.found) {
     console.log("Auto reply skipped: tenant not found", {
       instagramBusinessId,
     });
@@ -48,9 +51,7 @@ async function handleIncomingInstagramTextMessage({
     return;
   }
 
-  const tenantDoc = tenantSnapshot.docs[0];
-  const tenantId = tenantDoc.id;
-
+  const tenantId = tenantResult.tenantId;
   const autoReplyText = "Hola 👋 Gracias por escribirnos.";
 
   try {
@@ -60,8 +61,11 @@ async function handleIncomingInstagramTextMessage({
       text: autoReplyText,
     });
 
-    await db.collection("messages").doc(result.message_id).set({
-      messageId: result.message_id,
+    const outboundMessageId = result.message_id || result.recipient_id ||
+      `outbound_${Date.now()}`;
+
+    await db.collection("messages").doc(outboundMessageId).set({
+      messageId: outboundMessageId,
       tenantId,
       instagramBusinessId,
       recipientId: senderId,
@@ -77,7 +81,7 @@ async function handleIncomingInstagramTextMessage({
     console.log("Auto reply sent and stored:", {
       tenantId,
       recipientId: senderId,
-      messageId: result.message_id,
+      messageId: outboundMessageId,
     });
   } catch (error) {
     console.error("Auto reply failed:", {

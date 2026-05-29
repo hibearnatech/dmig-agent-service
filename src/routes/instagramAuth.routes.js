@@ -1,8 +1,11 @@
+// functions/src/routes/instagramAuth.routes.js
+
 const express = require("express");
 const {
   buildInstagramAuthUrl,
   exchangeCodeForToken,
   exchangeForLongLivedToken,
+  subscribeInstagramAccountToWebhooks,
   getInstagramProfile,
   storeConnectedAccount,
 } = require("../services/instagramAuth.service");
@@ -39,7 +42,7 @@ router.get("/instagram/callback", async (req, res) => {
     );
 
     const accessToken = longLivedTokenData.access_token;
-
+    await subscribeInstagramAccountToWebhooks(accessToken);
     const profileData = await getInstagramProfile(accessToken);
 
     const instagramUserId = profileData.id;

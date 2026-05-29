@@ -1,3 +1,5 @@
+// functions/src/adapters/instagram.adapter.js
+
 /**
  * Sends a text message through Instagram Messaging API.
  * @param {object} params Send message params.

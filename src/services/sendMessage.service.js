@@ -1,3 +1,5 @@
+// Service for sending messages to Instagram users.
+
 const {db} = require("../config/firebase");
 const {
   sendInstagramTextMessage,
@@ -31,19 +33,6 @@ async function sendManualInstagramMessage({tenantId, recipientId, text}) {
     accessToken: account.accessToken,
     recipientId,
     text,
-  });
-
-  await db.collection("messages").doc(result.message_id).set({
-    messageId: result.message_id,
-    tenantId,
-    recipientId,
-    text,
-    direction: "outbound",
-    type: "text",
-    source: "instagram",
-    status: "sent",
-    sentAt: new Date(),
-    rawResponse: result,
   });
 
   return result;

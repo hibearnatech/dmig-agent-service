@@ -14,6 +14,7 @@ const {
 function buildInstagramAuthUrl() {
   const scopes = [
     "instagram_business_basic",
+    "instagram_business_manage_messages",
   ];
 
   return "https://www.instagram.com/oauth/authorize" +
@@ -78,6 +79,44 @@ async function exchangeForLongLivedToken(shortLivedToken) {
 }
 
 /**
+ * Subscribes the connected Instagram professional account to app webhooks.
+ * This is required so Meta sends DM events to /meta/webhook.
+ * @param {string} accessToken Instagram long-lived access token.
+ * @return {Promise<object>} Subscription response.
+ */
+async function subscribeInstagramAccountToWebhooks(accessToken) {
+  const subscribedFields = [
+    "messages",
+    "message_reactions",
+    "messaging_seen",
+  ].join(",");
+
+  const response = await fetch(
+      "https://graph.instagram.com/v25.0/me/subscribed_apps",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          subscribed_fields: subscribedFields,
+        }),
+      },
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    console.error("Instagram webhook subscription error:", data);
+    throw new Error(JSON.stringify(data));
+  }
+
+  console.log("Instagram account subscribed to webhooks:", data);
+
+  return data;
+}
+/**
  * Gets Instagram profile data from Graph API.
  * @param {string} accessToken Instagram access token.
  * @return {Promise<object>} Instagram profile data.
@@ -117,6 +156,11 @@ async function storeConnectedAccount({
 }) {
   const tenantId = username.toLowerCase();
 
+  const now = admin.firestore.Timestamp.now();
+  const tokenExpiresAt = expiresIn ?
+    admin.firestore.Timestamp.fromMillis(now.toMillis() + expiresIn * 1000) :
+    null;
+
   await db.collection("connected_accounts").doc(tenantId).set({
     instagramUserId,
     username,
@@ -124,9 +168,12 @@ async function storeConnectedAccount({
     accessToken,
     tokenType: "long_lived",
     expiresIn: expiresIn || null,
+    tokenCreatedAt: now,
+    tokenExpiresAt,
     connectedAt: admin.firestore.FieldValue.serverTimestamp(),
     provider: "instagram",
     status: "connected",
+    webhookSubscribed: true,
   });
 
   return tenantId;
@@ -136,6 +183,7 @@ module.exports = {
   buildInstagramAuthUrl,
   exchangeCodeForToken,
   exchangeForLongLivedToken,
+  subscribeInstagramAccountToWebhooks,
   getInstagramProfile,
   storeConnectedAccount,
 };
